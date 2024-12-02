@@ -28,6 +28,7 @@ where
 {
     type Target = To;
 
+    #[inline(always)]
     fn with<R, F>(&mut self, f: F) -> R
     where
         F: FnOnce(&mut Self::Target) -> R,
