@@ -8,8 +8,8 @@
 		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
 		"dockerfile": "Dockerfile"
 	},
-	"workspaceMount": "source=${localWorkspaceFolder},target=/usr/src/local-async-utils,type=bind",
-	"workspaceFolder": "/usr/src/local-async-utils",
+	"workspaceMount": "source=${localWorkspaceFolder},target=/usr/src/local_async_utils,type=bind",
+	"workspaceFolder": "/usr/src/local_async_utils",
 	"remoteUser": "builder", // unnecessary if we set USER in Dockerfile
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
