@@ -1,0 +1,23 @@
+[package]
+name = "local-async-utils"
+version = "0.1.0"
+edition = "2021"
+authors = ["Mikhail Vasilyev"]
+description = "Utilities for single-threaded async programming"
+repository = "https://github.com/DanglingPointer/local-async-utils"
+license = "Apache-2.0"
+
+[features]
+tokio-time = ["dep:tokio"]
+
+[dependencies]
+futures = "0.3.31"
+log = "0.4.22"
+tokio = { version = "1.41.1", optional = true, features = ["time"] }
+
+[dev-dependencies]
+static_assertions = "1.1.0"
+tokio-test = "0.4.4"
+
+[profile.dev]
+opt-level = 3
