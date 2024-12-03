@@ -1,4 +1,4 @@
-FROM rust:1.82.0
+FROM rust:bookworm
 
 RUN rustup component add clippy rustfmt
 
