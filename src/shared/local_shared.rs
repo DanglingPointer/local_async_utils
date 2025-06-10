@@ -1,4 +1,4 @@
-use crate::shared::Shared;
+use super::Shared;
 use std::cell::RefCell;
 use std::rc::Rc;
 

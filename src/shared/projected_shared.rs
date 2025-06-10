@@ -1,24 +1,8 @@
-pub trait Shared: Clone {
-    type Target;
-
-    fn with<R, F>(&mut self, f: F) -> R
-    where
-        F: FnOnce(&mut Self::Target) -> R;
-
-    fn project<To, Proj>(&self, f: Proj) -> ProjectedShared<Self, Proj>
-    where
-        Proj: Fn(&mut Self::Target) -> &mut To + Clone,
-    {
-        ProjectedShared {
-            inner: self.clone(),
-            proj_fn: f,
-        }
-    }
-}
+use super::Shared;
 
 pub struct ProjectedShared<T, F> {
-    inner: T,
-    proj_fn: F,
+    pub(super) inner: T,
+    pub(super) proj_fn: F,
 }
 
 impl<From, To, Inner, Proj> Shared for ProjectedShared<Inner, Proj>
