@@ -8,7 +8,6 @@ use std::task::{Context, Poll};
 struct Data<T> {
     queue: sealed::Queue<T>,
     sender_count: Cell<usize>,
-    #[cfg(debug_assertions)]
     has_receiver: Cell<bool>,
 }
 
@@ -34,15 +33,17 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
     let state = SharedState::new(Data {
         queue: Default::default(),
         sender_count: Cell::new(1),
-        #[cfg(debug_assertions)]
         has_receiver: Cell::new(true),
     });
     (Sender(state.clone()), Receiver(state))
 }
 
 impl<T> Sender<T> {
+    pub fn is_closed(&self) -> bool {
+        !self.0.has_receiver.get()
+    }
+
     pub fn send(&self, item: T) {
-        #[cfg(debug_assertions)]
         debug_assert!(self.0.has_receiver.get());
         self.0.queue.push(item);
         self.0.notify();
@@ -86,6 +87,10 @@ impl<T> Receiver<T> {
     pub fn has_pending_data(&self) -> bool {
         !self.0.queue.is_empty()
     }
+
+    pub fn is_closed(&self) -> bool {
+        self.0.sender_count.get() == 0
+    }
 }
 
 impl<T> futures::Stream for Receiver<T> {
@@ -99,7 +104,6 @@ impl<T> futures::Stream for Receiver<T> {
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         self.0.receiver_dropped();
-        #[cfg(debug_assertions)]
         self.0.has_receiver.set(false);
     }
 }
@@ -152,5 +156,29 @@ mod tests {
             assert_eq!(Some(i), received);
         }
         assert_eq!(None, assert_ready!(receiver.poll_next()));
+    }
+
+    #[test]
+    fn test_sender_is_closed() {
+        let (sender, receiver) = channel::<i32>();
+        assert!(!sender.is_closed());
+
+        drop(receiver);
+        assert!(sender.is_closed());
+    }
+
+    #[test]
+    fn test_receiver_is_closed() {
+        let (sender, receiver) = channel::<i32>();
+        assert!(!receiver.is_closed());
+
+        let sender2 = sender.clone();
+        assert!(!receiver.is_closed());
+
+        drop(sender);
+        assert!(!receiver.is_closed());
+
+        drop(sender2);
+        assert!(receiver.is_closed());
     }
 }
