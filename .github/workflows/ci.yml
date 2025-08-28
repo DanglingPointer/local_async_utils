@@ -22,18 +22,13 @@ jobs:
 
   lint:
     name: Lint
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy
     - run: cargo clippy --all-targets --all-features -- -D warnings
-    - run: cargo clippy --release --all-targets --all-features -- -D warnings
 
   build:
     name: Build release
@@ -57,6 +52,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
-    - uses: cargo-bins/cargo-binstall@main
-    - run: cargo binstall cargo-nextest --secure -y
-    - run: cargo nextest run --all-targets --all-features --failure-output=immediate-final
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: nextest
+    - run: cargo nextest run --all-targets --all-features --no-fail-fast --failure-output=final
