@@ -2,15 +2,11 @@ use super::Shared;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub struct LocalShared<T> {
-    inner: Rc<RefCell<T>>,
-}
+pub struct LocalShared<T>(Rc<RefCell<T>>);
 
 impl<T> LocalShared<T> {
     pub fn new(inner: T) -> Self {
-        Self {
-            inner: Rc::new(RefCell::new(inner)),
-        }
+        Self(Rc::new(RefCell::new(inner)))
     }
 }
 
@@ -22,14 +18,12 @@ impl<T> Shared for LocalShared<T> {
     where
         F: FnOnce(&mut T) -> R,
     {
-        f(&mut self.inner.borrow_mut())
+        self.0.with(f)
     }
 }
 
 impl<T> Clone for LocalShared<T> {
     fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-        }
+        Self(self.0.clone())
     }
 }
