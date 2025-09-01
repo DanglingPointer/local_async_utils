@@ -1,6 +1,7 @@
 use super::shared_state::{SharedState, Source};
 use std::cell::Cell;
 use std::future::Future;
+use std::ops::ControlFlow;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
@@ -14,12 +15,12 @@ struct Data<T> {
 impl<T> Source for Data<T> {
     type Item = T;
 
-    fn closed(&self) -> bool {
-        !self.has_sender.get()
-    }
-
-    fn extract_item(&self) -> Option<Self::Item> {
-        self.value.replace(None)
+    fn try_yield_one(&self) -> ControlFlow<Option<Self::Item>> {
+        match self.value.take() {
+            Some(value) => ControlFlow::Break(Some(value)),
+            None if !self.has_sender.get() => ControlFlow::Break(None),
+            None => ControlFlow::Continue(()),
+        }
     }
 }
 

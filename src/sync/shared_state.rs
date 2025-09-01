@@ -1,12 +1,11 @@
 use std::cell::Cell;
-use std::ops::Deref;
+use std::ops::{ControlFlow, Deref};
 use std::rc::Rc;
 use std::task::{Context, Poll, Waker};
 
 pub(super) trait Source {
     type Item;
-    fn closed(&self) -> bool;
-    fn extract_item(&self) -> Option<Self::Item>;
+    fn try_yield_one(&self) -> ControlFlow<Option<Self::Item>>;
 }
 
 pub(super) struct SharedState<T> {
@@ -36,10 +35,8 @@ impl<T: Source> SharedState<T> {
     // This should NEVER be called concurrently from different futures/tasks,
     // because we store only 1 waker
     pub(super) fn poll_wait(self: &mut Rc<Self>, cx: &mut Context<'_>) -> Poll<Option<T::Item>> {
-        if let Some(item) = self.inner.extract_item() {
-            Poll::Ready(Some(item))
-        } else if self.inner.closed() {
-            Poll::Ready(None)
+        if let ControlFlow::Break(output) = self.inner.try_yield_one() {
+            Poll::Ready(output)
         } else {
             let new_waker = match self.waker.replace(None) {
                 Some(waker) if waker.will_wake(cx.waker()) => waker,

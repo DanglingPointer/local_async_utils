@@ -2,6 +2,7 @@ use super::shared_state::{SharedState, Source};
 use futures::FutureExt;
 use std::cell::Cell;
 use std::future::{poll_fn, Future};
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 struct Data {
@@ -14,17 +15,14 @@ struct Data {
 impl Source for Data {
     type Item = ();
 
-    fn closed(&self) -> bool {
-        !self.has_sender.get()
-    }
-
-    fn extract_item(&self) -> Option<Self::Item> {
-        let current_capacity = self.capacity.get();
-        if !self.closed() && current_capacity > 0 {
-            self.capacity.set(current_capacity - 1);
-            Some(())
+    fn try_yield_one(&self) -> ControlFlow<Option<Self::Item>> {
+        if !self.has_sender.get() {
+            ControlFlow::Break(None)
+        } else if self.capacity.get() > 0 {
+            self.capacity.update(|cap| cap - 1);
+            ControlFlow::Break(Some(()))
         } else {
-            None
+            ControlFlow::Continue(())
         }
     }
 }
