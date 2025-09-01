@@ -39,13 +39,13 @@ pub fn oneshot<T>() -> (Sender<T>, Receiver<T>) {
 }
 
 impl<T> Sender<T> {
-    pub fn send(self, value: T) -> bool {
+    pub fn send(self, value: T) -> Result<(), T> {
         if self.0.has_receiver.get() {
             self.0.value.set(Some(value));
             self.0.notify();
-            true
+            Ok(())
         } else {
-            false
+            Err(value)
         }
     }
 }

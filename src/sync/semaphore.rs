@@ -31,6 +31,7 @@ impl Source for Data {
 
 type StateRc = Rc<SharedState<Data>>;
 
+#[derive(Clone)]
 pub struct Sender(StateRc);
 
 pub struct Receiver(StateRc);

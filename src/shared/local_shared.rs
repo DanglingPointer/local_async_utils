@@ -30,6 +30,12 @@ impl<T> Clone for LocalShared<T> {
 
 pub struct LocalUnsafeShared<T>(Rc<UnsafeCell<T>>);
 
+impl<T> LocalUnsafeShared<T> {
+    pub fn new(inner: T) -> Self {
+        Self(Rc::new(UnsafeCell::new(inner)))
+    }
+}
+
 impl<T> UnsafeShared for LocalUnsafeShared<T> {
     type Target = T;
 

@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::cell::UnsafeCell;
-use std::collections::{hash_set, HashSet, VecDeque};
+use std::collections::{hash_set, vec_deque, HashSet, VecDeque};
 use std::hash::Hash;
 
 /// FIFO queue that never leaks references to its content
@@ -9,6 +9,10 @@ pub struct Queue<T>(UnsafeCell<VecDeque<T>>);
 impl<T> Queue<T> {
     pub fn new() -> Self {
         Self(UnsafeCell::new(VecDeque::new()))
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(UnsafeCell::new(VecDeque::with_capacity(capacity)))
     }
 
     pub fn push(&self, item: T) {
@@ -62,6 +66,22 @@ impl<T> Queue<T> {
 impl<T> Default for Queue<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T: Clone> Clone for Queue<T> {
+    fn clone(&self) -> Self {
+        let inner = unsafe { &*self.0.get() };
+        Self(UnsafeCell::new(inner.clone()))
+    }
+}
+
+impl<T> IntoIterator for Queue<T> {
+    type Item = T;
+    type IntoIter = vec_deque::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_inner().into_iter()
     }
 }
 
@@ -140,10 +160,9 @@ impl<T> IntoIterator for Set<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::{rc::Rc, sync::Arc};
-
     use super::*;
     use static_assertions::{assert_impl_all, assert_not_impl_any};
+    use std::{rc::Rc, sync::Arc};
 
     #[test]
     fn test_queue_is_send_but_not_sync() {
@@ -151,5 +170,13 @@ mod tests {
         assert_not_impl_any!(Queue<Rc<usize>>: std::marker::Send);
         assert_not_impl_any!(Queue<Arc<usize>>: Sync);
         assert_not_impl_any!(Arc<Queue<usize>>: std::marker::Send, Sync);
+    }
+
+    #[test]
+    fn test_set_is_send_but_not_sync() {
+        assert_impl_all!(Set<usize>: std::marker::Send);
+        assert_not_impl_any!(Set<Rc<usize>>: std::marker::Send);
+        assert_not_impl_any!(Set<Arc<usize>>: Sync);
+        assert_not_impl_any!(Arc<Set<usize>>: std::marker::Send, Sync);
     }
 }
