@@ -32,6 +32,7 @@ pub struct Sender<T>(StateRc<T>);
 
 pub struct Receiver<T>(StateRc<T>);
 
+/// Unbounded MPSC channel
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
     let state = SharedState::new(Data {
         queue: Default::default(),
@@ -46,27 +47,18 @@ impl<T> Sender<T> {
         !self.0.has_receiver.get()
     }
 
-    pub fn send(&self, item: T) {
-        debug_assert!(self.0.has_receiver.get());
-        self.0.queue.push(item);
-        self.0.notify();
-    }
-
-    #[must_use]
-    pub fn try_send(&self, len_threshold: usize, item: T) -> bool {
-        if self.0.queue.len() < len_threshold {
-            self.send(item);
-            true
+    pub fn send(&self, item: T) -> Result<(), T> {
+        if self.is_closed() {
+            Err(item)
         } else {
-            false
+            self.0.queue.push(item);
+            self.0.notify();
+            Ok(())
         }
     }
 
-    pub fn remove_all(&self, item: &T) -> bool
-    where
-        T: PartialEq<T>,
-    {
-        self.0.queue.remove_all(item)
+    pub fn queue(&self) -> &sealed::Queue<T> {
+        &self.0.queue
     }
 }
 
@@ -87,12 +79,12 @@ impl<T> Clone for Sender<T> {
 }
 
 impl<T> Receiver<T> {
-    pub fn has_pending_data(&self) -> bool {
-        !self.0.queue.is_empty()
-    }
-
     pub fn is_closed(&self) -> bool {
         self.0.sender_count.get() == 0
+    }
+
+    pub fn queue(&self) -> &sealed::Queue<T> {
+        &self.0.queue
     }
 }
 
@@ -134,7 +126,7 @@ mod tests {
         let mut receiver = spawn(receiver);
         assert_pending!(receiver.poll_next());
 
-        sender.send(42);
+        sender.send(42).unwrap();
         assert!(receiver.is_woken());
         assert_eq!(Some(42), assert_ready!(receiver.poll_next()));
         assert_pending!(receiver.poll_next());
@@ -149,7 +141,7 @@ mod tests {
         let (sender, receiver) = channel::<i32>();
 
         for i in 0..42 {
-            sender.send(i);
+            sender.send(i).unwrap();
         }
         drop(sender);
 

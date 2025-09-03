@@ -30,7 +30,7 @@ pub struct Sender<T>(StateRc<T>);
 
 pub struct Receiver<T>(StateRc<T>);
 
-pub fn oneshot<T>() -> (Sender<T>, Receiver<T>) {
+pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
     let state = SharedState::new(Data {
         value: Cell::new(None),
         has_sender: Cell::new(true),

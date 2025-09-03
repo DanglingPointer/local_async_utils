@@ -8,10 +8,11 @@ pub mod prelude {
     pub use crate::sealed;
     pub use crate::shared::*;
     pub use crate::stopwatch::Stopwatch;
-    pub use crate::sync::channel as local_channel;
+    pub use crate::sync::bounded as local_bounded;
     pub use crate::sync::condvar as local_condvar;
     pub use crate::sync::oneshot as local_oneshot;
     pub use crate::sync::semaphore as local_semaphore;
+    pub use crate::sync::unbounded as local_unbounded;
     pub use crate::{
         debug_stopwatch, error_stopwatch, info_stopwatch, trace_stopwatch, warn_stopwatch,
     };
