@@ -7,6 +7,7 @@ use tokio::time::Duration;
 #[cfg(not(feature = "tokio-time"))]
 use std::time::Duration;
 
+/// Utility for measuring the duration of an operation. When dropped, it will log the time elapsed since its creation.
 pub struct Stopwatch {
     lvl: log::Level,
     threshold: Duration,
@@ -47,6 +48,7 @@ impl fmt::Debug for Stopwatch {
     }
 }
 
+/// Creates a `Stopwatch` that will log a trace message if the elapsed time exceeds the threshold.
 #[macro_export]
 macro_rules! trace_stopwatch {
     ($threshold:expr, $($arg:tt)+) => {
@@ -54,6 +56,7 @@ macro_rules! trace_stopwatch {
     };
 }
 
+/// Creates a `Stopwatch` that will log a debug message if the elapsed time exceeds the threshold.
 #[macro_export]
 macro_rules! debug_stopwatch {
     ($threshold:expr, $($arg:tt)+) => {
@@ -61,6 +64,7 @@ macro_rules! debug_stopwatch {
     };
 }
 
+/// Creates a `Stopwatch` that will log an info message if the elapsed time exceeds the threshold.
 #[macro_export]
 macro_rules! info_stopwatch {
     ($threshold:expr, $($arg:tt)+) => {
@@ -68,6 +72,7 @@ macro_rules! info_stopwatch {
     };
 }
 
+/// Creates a `Stopwatch` that will log a warning message if the elapsed time exceeds the threshold.
 #[macro_export]
 macro_rules! warn_stopwatch {
     ($threshold:expr, $($arg:tt)+) => {
@@ -75,6 +80,7 @@ macro_rules! warn_stopwatch {
     };
 }
 
+/// Creates a `Stopwatch` that will log an error message if the elapsed time exceeds the threshold.
 #[macro_export]
 macro_rules! error_stopwatch {
     ($threshold:expr, $($arg:tt)+) => {

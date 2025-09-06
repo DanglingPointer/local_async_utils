@@ -2,6 +2,7 @@ use super::{Shared, UnsafeShared};
 use std::cell::{RefCell, UnsafeCell};
 use std::rc::Rc;
 
+/// Non-Send wrapper that allows access to the underlying data only through the `Shared` interface.
 pub struct LocalShared<T>(Rc<RefCell<T>>);
 
 impl<T> LocalShared<T> {
@@ -28,6 +29,7 @@ impl<T> Clone for LocalShared<T> {
     }
 }
 
+/// Non-Send wrapper that allows access to the underlying data only through the `UnsafeShared` interface.
 pub struct LocalUnsafeShared<T>(Rc<UnsafeCell<T>>);
 
 impl<T> LocalUnsafeShared<T> {

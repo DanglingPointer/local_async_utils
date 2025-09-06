@@ -2,19 +2,23 @@ pub mod local_shared;
 pub mod projected_shared;
 
 use std::cell::UnsafeCell;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::{cell::RefCell, rc::Rc};
 
 pub use local_shared::LocalShared;
 pub use projected_shared::ProjectedShared;
 
+/// An abstraction for accessing data shared between multiple tasks. In particular, this helps prevent
+/// holding references to such data across suspension points.
 pub trait Shared: Clone {
     type Target;
 
+    /// Perform operations on the shared data.
     fn with<R, F>(&mut self, f: F) -> R
     where
         F: FnOnce(&mut Self::Target) -> R;
 
+    /// Get a `Shared` object for accessing part of `self`
     fn project<To, Proj>(&self, f: Proj) -> ProjectedShared<Self, Proj>
     where
         Proj: Fn(&mut Self::Target) -> &mut To + Clone,
@@ -46,10 +50,12 @@ impl<T> Shared for Arc<Mutex<T>> {
     where
         F: FnOnce(&mut Self::Target) -> R,
     {
-        f(&mut self.lock().unwrap())
+        f(&mut self.lock().unwrap_or_else(PoisonError::into_inner))
     }
 }
 
+/// An unsafe abstraction for accessing data shared between multiple tasks. In particular,
+/// this helps prevent holding references to such data across suspension points.
 pub trait UnsafeShared: Clone {
     type Target;
 
@@ -67,6 +73,7 @@ pub trait UnsafeShared: Clone {
         self.with(move |t_ptr| f(unsafe { &mut *t_ptr }))
     }
 
+    /// Get a `UnsafeShared` object for accessing part of `self`
     fn project<To, Proj>(&self, f: Proj) -> ProjectedShared<Self, Proj>
     where
         Proj: Fn(*mut Self::Target) -> *mut To + Clone,

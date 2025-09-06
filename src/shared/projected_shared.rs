@@ -37,7 +37,7 @@ where
 
 impl<From, To, Inner, Proj> UnsafeShared for ProjectedShared<Inner, Proj>
 where
-    Inner: Shared<Target = From>,
+    Inner: UnsafeShared<Target = From>,
     Proj: Fn(*mut From) -> *mut To + Clone,
 {
     type Target = To;
