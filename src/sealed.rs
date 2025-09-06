@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::cell::UnsafeCell;
-use std::collections::{hash_set, vec_deque, HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque, hash_set, vec_deque};
 use std::hash::Hash;
 
 /// FIFO queue that never leaks references to its content
@@ -56,6 +56,11 @@ impl<T> Queue<T> {
     pub fn len(&self) -> usize {
         let inner = unsafe { &*self.0.get() };
         inner.len()
+    }
+
+    pub fn capacity(&self) -> usize {
+        let inner = unsafe { &*self.0.get() };
+        inner.capacity()
     }
 
     pub fn is_empty(&self) -> bool {

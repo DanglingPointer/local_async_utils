@@ -1,7 +1,19 @@
-use std::cell::Cell;
+use std::cell::UnsafeCell;
 use std::ops::{ControlFlow, Deref};
 use std::rc::Rc;
 use std::task::{Context, Poll, Waker};
+
+pub(super) unsafe fn replace_waker(waker: &UnsafeCell<Option<Waker>>, cx: &mut Context) {
+    let waker = unsafe { &mut *waker.get() };
+    if waker.as_ref().is_none_or(|w| !w.will_wake(cx.waker())) {
+        waker.replace(cx.waker().clone());
+    }
+}
+
+pub(super) unsafe fn take_and_wake(waker: &UnsafeCell<Option<Waker>>) {
+    let waker = unsafe { &mut *waker.get() };
+    waker.take().inspect(Waker::wake_by_ref);
+}
 
 pub(super) trait Source {
     type Item;
@@ -9,27 +21,26 @@ pub(super) trait Source {
 }
 
 pub(super) struct SharedState<T> {
-    waker: Cell<Option<Waker>>,
+    waker: UnsafeCell<Option<Waker>>,
     inner: T,
 }
 
 impl<T: Source> SharedState<T> {
     pub(super) fn new(inner: T) -> Rc<Self> {
         Rc::new(Self {
-            waker: Cell::new(None),
+            waker: UnsafeCell::new(None),
             inner,
         })
     }
 
     pub(super) fn notify(&self) {
-        if let Some(waker) = self.waker.take() {
-            waker.wake();
-        }
+        unsafe { take_and_wake(&self.waker) }
     }
 
     pub(super) fn receiver_dropped(&self) {
         // remove waker so that we don't unnecessarily wake anyone when Sender is dropped
-        self.waker.take();
+        let waker_mut = unsafe { &mut *self.waker.get() };
+        waker_mut.take();
     }
 
     // This should NEVER be called concurrently from different futures/tasks,
@@ -38,11 +49,7 @@ impl<T: Source> SharedState<T> {
         if let ControlFlow::Break(output) = self.inner.try_yield_one() {
             Poll::Ready(output)
         } else {
-            let new_waker = match self.waker.replace(None) {
-                Some(waker) if waker.will_wake(cx.waker()) => waker,
-                _ => cx.waker().clone(),
-            };
-            self.waker.set(Some(new_waker));
+            unsafe { replace_waker(&self.waker, cx) }
             Poll::Pending
         }
     }
