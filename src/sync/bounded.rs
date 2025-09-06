@@ -1,10 +1,10 @@
 use crate::shared::UnsafeShared;
+use crate::sync::error::{SendError, TrySendError};
 use futures::Stream;
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 use std::task::{Context, Poll, Waker};
-use std::{fmt, io};
 use std::{future::poll_fn, pin::Pin};
 
 struct State<T> {
@@ -23,17 +23,6 @@ fn replace_waker(old_waker: &mut Option<Waker>, cx: &mut Context) {
 
 fn take_and_wake(waker: &mut Option<Waker>) {
     waker.take().inspect(Waker::wake_by_ref);
-}
-
-#[derive(PartialEq, Eq)]
-pub enum TrySendError<T> {
-    Full(T),
-    Closed(T),
-}
-
-#[derive(PartialEq, Eq)]
-pub enum SendError<T> {
-    Closed(T),
 }
 
 /// Bounded SPSC channel
@@ -166,63 +155,6 @@ impl<T> Drop for Receiver<T> {
                 state.has_rx = false;
                 take_and_wake(&mut state.tx_waker);
             })
-        }
-    }
-}
-
-impl<T> fmt::Debug for TrySendError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TrySendError::Full(_) => f.write_str("TrySendError::Full(..)"),
-            TrySendError::Closed(_) => f.write_str("TrySendError::Closed(..)"),
-        }
-    }
-}
-
-impl<T> fmt::Display for TrySendError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TrySendError::Full(_) => f.write_str("channel is full"),
-            TrySendError::Closed(_) => f.write_str("channel is closed"),
-        }
-    }
-}
-
-impl<T> std::error::Error for TrySendError<T> {}
-
-impl<T> From<TrySendError<T>> for io::Error {
-    fn from(err: TrySendError<T>) -> Self {
-        let source = format!("{err}");
-        match err {
-            TrySendError::Full(_) => io::Error::new(io::ErrorKind::StorageFull, source),
-            TrySendError::Closed(_) => io::Error::new(io::ErrorKind::BrokenPipe, source),
-        }
-    }
-}
-
-impl<T> fmt::Debug for SendError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SendError::Closed(_) => f.write_str("SendError::Closed(..)"),
-        }
-    }
-}
-
-impl<T> fmt::Display for SendError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SendError::Closed(_) => f.write_str("channel is closed"),
-        }
-    }
-}
-
-impl<T> std::error::Error for SendError<T> {}
-
-impl<T> From<SendError<T>> for io::Error {
-    fn from(err: SendError<T>) -> Self {
-        let source = format!("{err}");
-        match err {
-            SendError::Closed(_) => io::Error::new(io::ErrorKind::BrokenPipe, source),
         }
     }
 }

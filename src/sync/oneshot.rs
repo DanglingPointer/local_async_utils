@@ -1,4 +1,5 @@
 use super::shared_state::{SharedState, Source};
+use crate::sync::error::SendError;
 use std::cell::Cell;
 use std::future::Future;
 use std::ops::ControlFlow;
@@ -40,13 +41,13 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 }
 
 impl<T> Sender<T> {
-    pub fn send(self, value: T) -> Result<(), T> {
+    pub fn send(self, value: T) -> Result<(), SendError<T>> {
         if self.0.has_receiver.get() {
             self.0.value.set(Some(value));
             self.0.notify();
             Ok(())
         } else {
-            Err(value)
+            Err(SendError::Closed(value))
         }
     }
 }

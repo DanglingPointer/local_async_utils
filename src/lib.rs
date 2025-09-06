@@ -10,6 +10,7 @@ pub mod prelude {
     pub use crate::stopwatch::Stopwatch;
     pub use crate::sync::bounded as local_bounded;
     pub use crate::sync::condvar as local_condvar;
+    pub use crate::sync::error as local_sync_error;
     pub use crate::sync::oneshot as local_oneshot;
     pub use crate::sync::semaphore as local_semaphore;
     pub use crate::sync::unbounded as local_unbounded;

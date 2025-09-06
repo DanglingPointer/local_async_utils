@@ -1,5 +1,6 @@
 use super::shared_state::{SharedState, Source};
 use crate::sealed;
+use crate::sync::error::SendError;
 use std::cell::Cell;
 use std::ops::ControlFlow;
 use std::pin::Pin;
@@ -47,9 +48,9 @@ impl<T> Sender<T> {
         !self.0.has_receiver.get()
     }
 
-    pub fn send(&self, item: T) -> Result<(), T> {
+    pub fn send(&self, item: T) -> Result<(), SendError<T>> {
         if self.is_closed() {
-            Err(item)
+            Err(SendError::Closed(item))
         } else {
             self.0.queue.push(item);
             self.0.notify();
