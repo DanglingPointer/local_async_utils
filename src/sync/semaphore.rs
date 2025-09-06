@@ -1,7 +1,7 @@
 use super::shared_state::{SharedState, Source};
 use futures::FutureExt;
 use std::cell::Cell;
-use std::future::{poll_fn, Future};
+use std::future::{Future, poll_fn};
 use std::ops::ControlFlow;
 use std::rc::Rc;
 
