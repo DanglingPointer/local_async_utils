@@ -1,11 +1,13 @@
 [package]
 name = "local_async_utils"
 version = "0.2.2"
-edition = "2021"
-authors = ["Mikhail Vasilyev"]
+edition = "2024"
+authors = ["Mikhail Vasilyev <mikail.vasilyev@gmail.com>"]
 description = "Utilities for single-threaded async programming"
 repository = "https://github.com/DanglingPointer/local_async_utils"
 license = "Apache-2.0"
+categories = ["asynchronous", "data-structures"]
+exclude = ["/tests"]
 
 [features]
 tokio-time = ["dep:tokio"]
