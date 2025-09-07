@@ -1,16 +1,16 @@
 use crate::sealed;
 use crate::sync::error::{SendError, TrySendError};
-use crate::sync::shared_state::{replace_waker, take_and_wake};
+use crate::sync::waker_cell::WakerCell;
 use futures::Stream;
-use std::cell::{Cell, UnsafeCell};
+use std::cell::Cell;
 use std::rc::Rc;
-use std::task::{Context, Poll, Waker};
+use std::task::{Context, Poll};
 use std::{future::poll_fn, pin::Pin};
 
 struct State<T> {
     queue: sealed::Queue<T>,
-    tx_waker: UnsafeCell<Option<Waker>>,
-    rx_waker: UnsafeCell<Option<Waker>>,
+    tx_waker: WakerCell,
+    rx_waker: WakerCell,
     has_tx: Cell<bool>,
     has_rx: Cell<bool>,
     capacity: usize,
@@ -20,8 +20,8 @@ struct State<T> {
 pub fn channel<T>(limit: usize) -> (Sender<T>, Receiver<T>) {
     let shared = Rc::new(State {
         queue: sealed::Queue::with_capacity(limit),
-        tx_waker: UnsafeCell::new(None),
-        rx_waker: UnsafeCell::new(None),
+        tx_waker: Default::default(),
+        rx_waker: Default::default(),
         has_tx: Cell::new(true),
         has_rx: Cell::new(true),
         capacity: limit,
@@ -36,7 +36,7 @@ impl<T> Sender<T> {
         let can_send = poll_fn(|cx| self.poll_ready(cx)).await;
         if can_send {
             self.0.queue.push(item);
-            unsafe { take_and_wake(&self.0.rx_waker) }
+            self.0.rx_waker.take_and_wake();
             Ok(())
         } else {
             Err(SendError::Closed(item))
@@ -52,7 +52,7 @@ impl<T> Sender<T> {
             Err(TrySendError::Closed(item))
         } else if self.0.queue.len() < self.0.capacity {
             self.0.queue.push(item);
-            unsafe { take_and_wake(&self.0.rx_waker) }
+            self.0.rx_waker.take_and_wake();
             Ok(())
         } else {
             Err(TrySendError::Full(item))
@@ -73,7 +73,7 @@ impl<T> Sender<T> {
         } else if self.0.queue.len() < self.0.queue.capacity() {
             Poll::Ready(true)
         } else {
-            unsafe { replace_waker(&self.0.tx_waker, cx) }
+            self.0.tx_waker.update(cx);
             Poll::Pending
         }
     }
@@ -82,7 +82,7 @@ impl<T> Sender<T> {
         if !self.0.has_rx.get() {
             Poll::Ready(())
         } else {
-            unsafe { replace_waker(&self.0.tx_waker, cx) }
+            self.0.tx_waker.update(cx);
             Poll::Pending
         }
     }
@@ -91,11 +91,8 @@ impl<T> Sender<T> {
 impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
         self.0.has_tx.set(false);
-        unsafe {
-            let tx_waker_mut = &mut *self.0.tx_waker.get();
-            *tx_waker_mut = None;
-            take_and_wake(&self.0.rx_waker);
-        }
+        self.0.tx_waker.reset();
+        self.0.rx_waker.take_and_wake();
     }
 }
 
@@ -116,12 +113,12 @@ impl<T> Stream for Receiver<T> {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Some(item) = self.0.queue.pop() {
-            unsafe { take_and_wake(&self.0.tx_waker) }
+            self.0.tx_waker.take_and_wake();
             Poll::Ready(Some(item))
         } else if !self.0.has_tx.get() {
             Poll::Ready(None)
         } else {
-            unsafe { replace_waker(&self.0.rx_waker, cx) }
+            self.0.rx_waker.update(cx);
             Poll::Pending
         }
     }
@@ -130,7 +127,7 @@ impl<T> Stream for Receiver<T> {
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         self.0.has_rx.set(false);
-        unsafe { take_and_wake(&self.0.tx_waker) }
+        self.0.tx_waker.take_and_wake();
     }
 }
 

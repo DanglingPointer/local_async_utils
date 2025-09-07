@@ -5,3 +5,4 @@ pub mod oneshot;
 pub mod semaphore;
 mod shared_state;
 pub mod unbounded;
+mod waker_cell;

@@ -1,19 +1,7 @@
-use std::cell::UnsafeCell;
+use crate::sync::waker_cell::WakerCell;
 use std::ops::{ControlFlow, Deref};
 use std::rc::Rc;
-use std::task::{Context, Poll, Waker};
-
-pub(super) unsafe fn replace_waker(waker: &UnsafeCell<Option<Waker>>, cx: &mut Context) {
-    let waker = unsafe { &mut *waker.get() };
-    if waker.as_ref().is_none_or(|w| !w.will_wake(cx.waker())) {
-        waker.replace(cx.waker().clone());
-    }
-}
-
-pub(super) unsafe fn take_and_wake(waker: &UnsafeCell<Option<Waker>>) {
-    let waker = unsafe { &mut *waker.get() };
-    waker.take().inspect(Waker::wake_by_ref);
-}
+use std::task::{Context, Poll};
 
 pub(super) trait Source {
     type Item;
@@ -21,26 +9,25 @@ pub(super) trait Source {
 }
 
 pub(super) struct SharedState<T> {
-    waker: UnsafeCell<Option<Waker>>,
+    waker: WakerCell,
     inner: T,
 }
 
 impl<T: Source> SharedState<T> {
     pub(super) fn new(inner: T) -> Rc<Self> {
         Rc::new(Self {
-            waker: UnsafeCell::new(None),
+            waker: Default::default(),
             inner,
         })
     }
 
     pub(super) fn notify(&self) {
-        unsafe { take_and_wake(&self.waker) }
+        self.waker.take_and_wake();
     }
 
     pub(super) fn receiver_dropped(&self) {
         // remove waker so that we don't unnecessarily wake anyone when Sender is dropped
-        let waker_mut = unsafe { &mut *self.waker.get() };
-        waker_mut.take();
+        self.waker.reset();
     }
 
     // This should NEVER be called concurrently from different futures/tasks,
@@ -49,7 +36,7 @@ impl<T: Source> SharedState<T> {
         if let ControlFlow::Break(output) = self.inner.try_yield_one() {
             Poll::Ready(output)
         } else {
-            unsafe { replace_waker(&self.waker, cx) }
+            self.waker.update(cx);
             Poll::Pending
         }
     }
