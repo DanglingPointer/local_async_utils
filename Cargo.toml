@@ -1,6 +1,6 @@
 [package]
 name = "local_async_utils"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2024"
 authors = ["Mikhail Vasilyev <mikail.vasilyev@gmail.com>"]
 description = "Utilities for single-threaded async programming"
