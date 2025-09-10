@@ -70,7 +70,7 @@ impl<T> Sender<T> {
     fn poll_ready(&mut self, cx: &mut Context) -> Poll<bool> {
         if !self.0.has_rx.get() {
             Poll::Ready(false)
-        } else if self.0.queue.len() < self.0.queue.capacity() {
+        } else if self.0.queue.len() < self.0.capacity {
             Poll::Ready(true)
         } else {
             self.0.tx_waker.update(cx);
