@@ -96,3 +96,59 @@ impl<T> UnsafeShared for Rc<UnsafeCell<T>> {
         f(self.get())
     }
 }
+
+/// Convenience macro for invoking [`Shared::with()`] method. Example usage:
+/// ```
+/// # use local_async_utils::prelude::*;
+/// # use std::{cell::RefCell, rc::Rc};
+/// let mut shared_data = Rc::new(RefCell::new(vec![1, 2, 3]));
+/// define_with!(shared_data);
+///
+/// with!(|data| data.push(42));
+///
+/// let copy: Vec<_> = with!(|data| data.clone());
+///
+/// assert_eq!(copy, vec![1, 2, 3, 42]);
+/// ```
+#[macro_export]
+macro_rules! define_with {
+    ($shared:expr) => {
+        macro_rules! with {
+            ($f:expr) => {{
+                use $crate::shared::Shared;
+                $shared.with(
+                    #[inline(always)]
+                    $f,
+                )
+            }};
+        }
+    };
+}
+
+/// Convenience macro for invoking [`UnsafeShared::with_unchecked()`] method. Example usage:
+/// ```
+/// # use local_async_utils::prelude::*;
+/// # use std::{cell::UnsafeCell, rc::Rc};
+/// let mut shared_data = Rc::new(UnsafeCell::new(vec![1, 2, 3]));
+/// define_with_unchecked!(shared_data);
+///
+/// unsafe { with_unchecked!(|data| data.push(42)) }
+///
+/// let copy: Vec<_> = unsafe { with_unchecked!(|data| data.clone()) };
+///
+/// assert_eq!(copy, vec![1, 2, 3, 42]);
+/// ```
+#[macro_export]
+macro_rules! define_with_unchecked {
+    ($shared:expr) => {
+        macro_rules! with_unchecked {
+            ($f:expr) => {{
+                use $crate::shared::UnsafeShared;
+                $shared.with_unchecked(
+                    #[inline(always)]
+                    $f,
+                )
+            }};
+        }
+    };
+}

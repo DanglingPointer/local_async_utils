@@ -2,7 +2,7 @@ pub mod sealed;
 pub mod shared;
 pub mod stopwatch;
 pub mod sync;
-pub mod time;
+mod time;
 
 pub mod prelude {
     pub use crate::sealed;
@@ -17,5 +17,6 @@ pub mod prelude {
     pub use crate::{
         debug_stopwatch, error_stopwatch, info_stopwatch, trace_stopwatch, warn_stopwatch,
     };
+    pub use crate::{define_with, define_with_unchecked};
     pub use crate::{millisec, min, sec};
 }
