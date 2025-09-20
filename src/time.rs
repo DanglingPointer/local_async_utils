@@ -1,4 +1,4 @@
-/// Shortcut for [`std::time::Duration::from_secs`]. Example usage:
+/// Shortcut for [`std::time::Duration::from_secs`].
 /// ```
 /// # use local_async_utils::prelude::*;
 /// let duration = sec!(5);
@@ -9,7 +9,7 @@ macro_rules! sec {
     ($arg:expr) => {{ std::time::Duration::from_secs($arg) }};
 }
 
-/// Shortcut for [`std::time::Duration::from_millis`]. Example usage:
+/// Shortcut for [`std::time::Duration::from_millis`].
 /// ```
 /// # use local_async_utils::prelude::*;
 /// let duration = millisec!(1500);
@@ -20,7 +20,7 @@ macro_rules! millisec {
     ($arg:expr) => {{ std::time::Duration::from_millis($arg) }};
 }
 
-/// Shortcut for [`std::time::Duration::from_secs`]. Example usage:
+/// Shortcut for [`std::time::Duration::from_secs`].
 /// ```
 /// # use local_async_utils::prelude::*;
 /// let duration = min!(2);

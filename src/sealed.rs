@@ -1,3 +1,5 @@
+//! Collections that never leak references to their content, and therefore can be safely accessed via shared references.
+
 use std::borrow::Borrow;
 use std::cell::UnsafeCell;
 use std::collections::{HashSet, VecDeque, hash_set, vec_deque};

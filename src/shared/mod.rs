@@ -1,3 +1,5 @@
+//! Abstractions for accessing data shared between multiple tasks in a safe manner.
+
 pub mod local_shared;
 pub mod projected_shared;
 
@@ -97,7 +99,7 @@ impl<T> UnsafeShared for Rc<UnsafeCell<T>> {
     }
 }
 
-/// Convenience macro for invoking [`Shared::with()`] method. Example usage:
+/// Convenience macro for invoking [`Shared::with()`] method.
 /// ```
 /// # use local_async_utils::prelude::*;
 /// # use std::{cell::RefCell, rc::Rc};
@@ -125,7 +127,7 @@ macro_rules! define_with {
     };
 }
 
-/// Convenience macro for invoking [`UnsafeShared::with_unchecked()`] method. Example usage:
+/// Convenience macro for invoking [`UnsafeShared::with_unchecked()`] method.
 /// ```
 /// # use local_async_utils::prelude::*;
 /// # use std::{cell::UnsafeCell, rc::Rc};

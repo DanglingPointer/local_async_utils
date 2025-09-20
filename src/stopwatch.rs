@@ -1,3 +1,5 @@
+//! Utilities for measuring the duration of operations and logging if they exceed a specified threshold.
+
 use std::fmt;
 use std::time::Instant;
 
@@ -48,7 +50,7 @@ impl fmt::Debug for Stopwatch {
     }
 }
 
-/// Creates a [`Stopwatch`] that will log a trace message if the elapsed time exceeds the threshold. Example usage:
+/// Creates a [`Stopwatch`] that will log a trace message if the elapsed time exceeds the threshold.
 /// ```
 /// use local_async_utils::prelude::*;
 ///
@@ -63,7 +65,7 @@ macro_rules! trace_stopwatch {
     };
 }
 
-/// Creates a [`Stopwatch`] that will log a debug message if the elapsed time exceeds the threshold. Example usage:
+/// Creates a [`Stopwatch`] that will log a debug message if the elapsed time exceeds the threshold.
 /// ```
 /// use local_async_utils::prelude::*;
 ///
@@ -78,7 +80,7 @@ macro_rules! debug_stopwatch {
     };
 }
 
-/// Creates a [`Stopwatch`] that will log an info message if the elapsed time exceeds the threshold. Example usage:
+/// Creates a [`Stopwatch`] that will log an info message if the elapsed time exceeds the threshold.
 /// ```
 /// use local_async_utils::prelude::*;
 ///
@@ -93,7 +95,7 @@ macro_rules! info_stopwatch {
     };
 }
 
-/// Creates a [`Stopwatch`] that will log a warning message if the elapsed time exceeds the threshold. Example usage:
+/// Creates a [`Stopwatch`] that will log a warning message if the elapsed time exceeds the threshold.
 /// ```
 /// use local_async_utils::prelude::*;
 ///
@@ -108,7 +110,7 @@ macro_rules! warn_stopwatch {
     };
 }
 
-/// Creates a [`Stopwatch`] that will log an error message if the elapsed time exceeds the threshold. Example usage:
+/// Creates a [`Stopwatch`] that will log an error message if the elapsed time exceeds the threshold.
 /// ```
 /// use local_async_utils::prelude::*;
 ///

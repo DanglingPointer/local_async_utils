@@ -1,3 +1,5 @@
+//! Synchronization primitives for single-threaded async programming.
+
 pub mod bounded;
 pub mod condvar;
 pub mod error;
