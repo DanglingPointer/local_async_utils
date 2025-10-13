@@ -3,6 +3,7 @@
 use std::borrow::Borrow;
 use std::cell::UnsafeCell;
 use std::collections::{HashSet, VecDeque, hash_set, vec_deque};
+use std::fmt;
 use std::hash::Hash;
 
 /// FIFO queue that never leaks references to its content
@@ -67,6 +68,13 @@ impl<T> Queue<T> {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Queue<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let inner = unsafe { &*self.0.get() };
+        inner.fmt(f)
     }
 }
 
@@ -140,6 +148,13 @@ impl<T: Eq + Hash> Set<T> {
     pub fn is_empty(&self) -> bool {
         let inner = unsafe { &*self.0.get() };
         inner.is_empty()
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Set<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let inner = unsafe { &*self.0.get() };
+        inner.fmt(f)
     }
 }
 
