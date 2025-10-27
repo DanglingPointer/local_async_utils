@@ -19,6 +19,7 @@
     "rust-analyzer.runnables.extraTestBinaryArgs": [
         "--nocapture"
     ],
+    "rust-analyzer.cargo.features": "all",
     "gitlens.codeLens.enabled": false,
     "editor.semanticTokenColorCustomizations": {
         "rules": {

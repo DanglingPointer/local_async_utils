@@ -1,5 +1,7 @@
 pub mod sealed;
 pub mod shared;
+#[cfg(feature = "tokio-time")]
+pub mod split;
 pub mod stopwatch;
 pub mod sync;
 mod time;
