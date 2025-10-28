@@ -10,7 +10,7 @@ categories = ["asynchronous", "data-structures"]
 exclude = ["/tests"]
 
 [features]
-tokio-time = ["dep:tokio"]
+tokio = ["dep:tokio"]
 
 [dependencies]
 futures = "0.3.31"

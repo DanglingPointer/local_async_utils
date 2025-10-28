@@ -3,10 +3,10 @@
 use std::fmt;
 use std::time::Instant;
 
-#[cfg(feature = "tokio-time")]
+#[cfg(feature = "tokio")]
 use tokio::time::Duration;
 
-#[cfg(not(feature = "tokio-time"))]
+#[cfg(not(feature = "tokio"))]
 use std::time::Duration;
 
 /// Utility for measuring the duration of an operation. When dropped, it will log the time elapsed since its creation.

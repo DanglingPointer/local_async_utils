@@ -4,7 +4,7 @@ pub mod bounded;
 pub mod condvar;
 pub mod error;
 pub mod oneshot;
-#[cfg(feature = "tokio-time")]
+#[cfg(feature = "tokio")]
 pub mod pipe;
 pub mod semaphore;
 mod shared_state;
