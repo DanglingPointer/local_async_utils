@@ -1,3 +1,5 @@
+//! Utilities for splitting `AsyncRead + AsyncWrite` types into separate read and write halves.
+
 use std::cell::RefCell;
 use std::io;
 use std::pin::Pin;

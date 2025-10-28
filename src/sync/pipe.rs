@@ -52,7 +52,7 @@ impl Pipe {
             let (head, tail) = self.buffer.as_slices();
             let bytes_copied = copy_slice(buf, head) + copy_slice(buf, tail);
             if bytes_copied > 0 {
-                truncate_front(&mut self.buffer, bytes_copied);
+                self.buffer.drain(..bytes_copied); // FIXME: replace with truncate_front when stabilized
                 if let Some(waker) = self.write_waker.take() {
                     waker.wake();
                 }
@@ -128,13 +128,6 @@ fn copy_slice(dest: &mut ReadBuf, src: &[u8]) -> usize {
     bytes_to_copy
 }
 
-fn truncate_front(deq: &mut VecDeque<u8>, count: usize) {
-    assert!(deq.len() >= count);
-    let keep = deq.len() - count;
-    deq.rotate_left(count);
-    deq.truncate(keep);
-}
-
 impl AsyncRead for Pipe {
     fn poll_read(
         self: Pin<&mut Self>,
@@ -182,18 +175,18 @@ impl AsyncWrite for Pipe {
 /// Creates a unidirectional in-memory pipe with the specified maximum buffer size.
 /// Returns the readable and writable halves of the pipe.
 /// Non-thread-safe equivalent of [`tokio::io::simplex`](https://docs.rs/tokio/latest/tokio/io/fn.simplex.html).
-pub fn pipe(max_buf_size: usize) -> (PipeReader, PipeWriter) {
+pub fn pipe(max_buf_size: usize) -> (Reader, Writer) {
     let pipe = Rc::new(UnsafeCell::new(Pipe::new(max_buf_size)));
-    (PipeReader(pipe.clone()), PipeWriter(pipe))
+    (Reader(pipe.clone()), Writer(pipe))
 }
 
 /// The readable half of a value returned from [`pipe`].
-pub struct PipeReader(Rc<UnsafeCell<Pipe>>);
+pub struct Reader(Rc<UnsafeCell<Pipe>>);
 
 /// The writable half of a value returned from [`pipe`].
-pub struct PipeWriter(Rc<UnsafeCell<Pipe>>);
+pub struct Writer(Rc<UnsafeCell<Pipe>>);
 
-impl AsyncRead for PipeReader {
+impl AsyncRead for Reader {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -204,14 +197,14 @@ impl AsyncRead for PipeReader {
     }
 }
 
-impl Drop for PipeReader {
+impl Drop for Reader {
     fn drop(&mut self) {
         // SAFETY: exclusive access is guaranteed by the single-threaded context
         unsafe { self.0.with_unchecked(|pipe| pipe.close_read()) }
     }
 }
 
-impl AsyncWrite for PipeWriter {
+impl AsyncWrite for Writer {
     fn poll_write(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -248,7 +241,7 @@ impl AsyncWrite for PipeWriter {
     }
 }
 
-impl Drop for PipeWriter {
+impl Drop for Writer {
     fn drop(&mut self) {
         // SAFETY: exclusive access is guaranteed by the single-threaded context
         unsafe { self.0.with_unchecked(|pipe| pipe.close_write()) }
@@ -328,8 +321,34 @@ mod tests {
     }
 
     #[test]
+    fn test_partial_read() {
+        let (mut reader, mut writer) = pipe(1024);
+
+        let data = b"Hello, world!";
+        let mut write_task = spawn(writer.write_all(data));
+        let write_ret = assert_ready!(write_task.poll());
+        assert!(write_ret.is_ok());
+        drop(write_task);
+
+        let mut buf = [0u8; 7];
+
+        let mut read_task = spawn(reader.read_exact(&mut buf));
+        let read_ret = assert_ready!(read_task.poll());
+        assert!(read_ret.is_ok());
+        drop(read_task);
+        assert_eq!(&buf[..], b"Hello, ");
+
+        let mut buf_ref = &mut buf[..];
+        let mut read_task = spawn(reader.read_buf(&mut buf_ref));
+        let read_ret = assert_ready!(read_task.poll());
+        assert!(read_ret.is_ok());
+        assert_eq!(&buf[..], b"world! ");
+    }
+
+    #[test]
     fn test_drop_writer() {
-        let (mut reader, writer) = pipe(1024);
+        let (mut reader, mut writer) = pipe(1024);
+        assert_ready!(spawn(writer.write_all(b"Hello, world!")).poll()).unwrap();
 
         drop(writer);
         let mut buf = Vec::new();
@@ -337,7 +356,7 @@ mod tests {
         let read_eof_ret = assert_ready!(read_eof_task.poll());
         assert!(read_eof_ret.is_ok());
         drop(read_eof_task);
-        assert!(buf.is_empty());
+        assert_eq!(&buf[..], b"Hello, world!");
     }
 
     #[test]
@@ -382,5 +401,31 @@ mod tests {
         let write_ret = assert_ready!(write_task.poll());
         let err = write_ret.err().unwrap();
         assert_eq!(err.kind(), io::ErrorKind::BrokenPipe);
+    }
+
+    #[test]
+    fn test_non_contiguous_internal_buffer() {
+        let (mut reader, mut writer) = pipe(4);
+
+        assert_ready!(spawn(writer.write_all(b"1234")).poll()).unwrap();
+
+        let mut buf = [0u8; 2];
+        assert_ready!(spawn(reader.read_exact(&mut buf)).poll()).unwrap();
+        assert_eq!(&buf[..], b"12");
+
+        assert_ready!(spawn(writer.write_all(b"56")).poll()).unwrap();
+
+        unsafe {
+            reader.0.with_unchecked(|pipe| {
+                let (head, tail) = pipe.buffer.as_slices();
+                assert!(!head.is_empty());
+                assert!(!tail.is_empty());
+            });
+        }
+
+        let mut buf = Vec::new();
+        let read_ret = assert_ready!(spawn(reader.read_buf(&mut buf)).poll());
+        assert!(read_ret.is_ok());
+        assert_eq!(&buf[..], b"3456");
     }
 }
