@@ -24,3 +24,8 @@ tokio = { version = "1.48.0", features = ["time", "io-util"] }
 
 [profile.dev]
 opt-level = 3
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+rustc-args = ["--cfg", "docsrs"]

@@ -62,9 +62,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: dtolnay/rust-toolchain@nightly
     - run: cargo test --doc
     - run: cargo doc --lib --no-deps --all-features --document-private-items
       env:
-        RUSTDOCFLAGS: -Dwarnings
-        RUSTFLAGS: -Dwarnings
+        RUSTFLAGS: --cfg docsrs -Dwarnings
+        RUSTDOCFLAGS: --cfg docsrs -Dwarnings

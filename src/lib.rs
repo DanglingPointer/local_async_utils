@@ -1,6 +1,9 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 pub mod sealed;
 pub mod shared;
 #[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
 pub mod split;
 pub mod stopwatch;
 pub mod sync;
@@ -15,6 +18,7 @@ pub mod prelude {
     pub use crate::sync::error as local_sync_error;
     pub use crate::sync::oneshot as local_oneshot;
     #[cfg(feature = "tokio")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
     pub use crate::sync::pipe as local_pipe;
     pub use crate::sync::semaphore as local_semaphore;
     pub use crate::sync::unbounded as local_unbounded;
