@@ -51,3 +51,22 @@ where
         self.inner.with(|from| f(proj_fn(from)))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::shared::LocalShared;
+
+    #[test]
+    fn test_projected_shared() {
+        let mut shared = LocalShared::new((1, 2));
+        let mut projected = shared.project(|data| &mut data.0);
+
+        projected.with(|data| {
+            *data += 10;
+        });
+
+        let result = shared.with(|data| data.0);
+        assert_eq!(result, 11);
+    }
+}

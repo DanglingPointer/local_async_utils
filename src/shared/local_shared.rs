@@ -55,3 +55,39 @@ impl<T> Clone for LocalUnsafeShared<T> {
         Self(self.0.clone())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{define_with, define_with_unchecked};
+
+    #[test]
+    fn test_local_shared() {
+        let mut shared = LocalShared::new(5);
+        define_with!(shared);
+
+        with!(|data| {
+            *data += 1;
+        });
+
+        let mut shared_clone = shared.clone();
+        let result = shared_clone.with(|data| *data);
+        assert_eq!(result, 6);
+    }
+
+    #[test]
+    fn test_local_unsafe_shared() {
+        let mut shared = LocalUnsafeShared::new(10);
+        define_with_unchecked!(shared);
+
+        unsafe {
+            with_unchecked!(|data| {
+                *data += 1;
+            })
+        };
+
+        let mut shared_clone = shared.clone();
+        let result = unsafe { shared_clone.with(|data| *data) };
+        assert_eq!(result, 11);
+    }
+}
