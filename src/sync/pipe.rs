@@ -249,6 +249,49 @@ impl Drop for Writer {
     }
 }
 
+/// Create a pair of connected [`DuplexPipe`]s with the given capacity.
+pub fn duplex_pipe(max_buf_size: usize) -> (DuplexPipe, DuplexPipe) {
+    let (read1, write1) = pipe(max_buf_size);
+    let (read2, write2) = pipe(max_buf_size);
+    (DuplexPipe(read1, write2), DuplexPipe(read2, write1))
+}
+
+/// Bidirectional in-memory stream of bytes implementing `AsyncRead` and `AsyncWrite`.
+/// Non-thread-safe equivalent of [`tokio::io::DuplexStream`](https://docs.rs/tokio/latest/tokio/io/struct.DuplexStream.html).
+pub struct DuplexPipe(pub Reader, pub Writer);
+
+impl AsyncRead for DuplexPipe {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        let DuplexPipe(read, _write) = self.get_mut();
+        Pin::new(read).poll_read(cx, buf)
+    }
+}
+
+impl AsyncWrite for DuplexPipe {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<Result<usize, io::Error>> {
+        let DuplexPipe(_read, write) = self.get_mut();
+        Pin::new(write).poll_write(cx, buf)
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+        let DuplexPipe(_read, write) = self.get_mut();
+        Pin::new(write).poll_flush(cx)
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+        let DuplexPipe(_read, write) = self.get_mut();
+        Pin::new(write).poll_shutdown(cx)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -428,5 +471,40 @@ mod tests {
         let read_ret = assert_ready!(spawn(reader.read_buf(&mut buf)).poll());
         assert!(read_ret.is_ok());
         assert_eq!(&buf[..], b"3456");
+    }
+
+    #[test]
+    fn test_duplex_pipe() {
+        let (mut stream1, mut stream2) = duplex_pipe(1024);
+
+        let data = b"Hello, world!";
+        let mut write_task = spawn(stream1.write_all(data));
+        let write_ret = assert_ready!(write_task.poll());
+        assert!(write_ret.is_ok());
+        drop(write_task);
+
+        assert_pending!(spawn(stream1.read_u8()).poll());
+
+        let mut buf = Vec::new();
+        let mut read_task = spawn(stream2.read_buf(&mut buf));
+        let read_ret = assert_ready!(read_task.poll());
+        assert!(read_ret.is_ok());
+        drop(read_task);
+        assert_eq!(&buf[..], data);
+
+        let data = b"Goodbye, world!";
+        let mut write_task = spawn(stream2.write_all(data));
+        let write_ret = assert_ready!(write_task.poll());
+        assert!(write_ret.is_ok());
+        drop(write_task);
+
+        assert_pending!(spawn(stream2.read_u8()).poll());
+
+        let mut buf = Vec::new();
+        let mut read_task = spawn(stream1.read_buf(&mut buf));
+        let read_ret = assert_ready!(read_task.poll());
+        assert!(read_ret.is_ok());
+        drop(read_task);
+        assert_eq!(&buf[..], data);
     }
 }
