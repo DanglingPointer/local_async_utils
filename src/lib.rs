@@ -12,6 +12,9 @@ mod time;
 pub mod prelude {
     pub use crate::sealed;
     pub use crate::shared::*;
+    #[cfg(feature = "tokio")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
+    pub use crate::split as local_split;
     pub use crate::stopwatch::Stopwatch;
     pub use crate::sync::bounded as local_bounded;
     pub use crate::sync::condvar as local_condvar;

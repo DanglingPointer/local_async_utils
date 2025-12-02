@@ -40,7 +40,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
-    - run: cargo build --release --all-targets --verbose
+    - run: cargo build --release --all-targets --no-default-features
+    - run: cargo build --release --all-targets --all-features
 
   test:
     name: Run tests
