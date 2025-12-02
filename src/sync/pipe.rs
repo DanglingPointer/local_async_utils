@@ -1,5 +1,6 @@
 use crate::shared::UnsafeShared;
 use std::cell::UnsafeCell;
+use std::io::BufRead;
 use std::rc::Rc;
 use std::task::{Context, Poll, Waker};
 use std::{cmp, io};
@@ -52,7 +53,7 @@ impl Pipe {
             let (head, tail) = self.buffer.as_slices();
             let bytes_copied = copy_slice(buf, head) + copy_slice(buf, tail);
             if bytes_copied > 0 {
-                self.buffer.drain(..bytes_copied); // FIXME: replace with truncate_front when stabilized
+                self.buffer.consume(bytes_copied);
                 if let Some(waker) = self.write_waker.take() {
                     waker.wake();
                 }
