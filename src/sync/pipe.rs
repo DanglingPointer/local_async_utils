@@ -258,7 +258,21 @@ pub fn duplex_pipe(max_buf_size: usize) -> (DuplexPipe, DuplexPipe) {
 
 /// Bidirectional in-memory stream of bytes implementing `AsyncRead` and `AsyncWrite`.
 /// Non-thread-safe equivalent of [`tokio::io::DuplexStream`](https://docs.rs/tokio/latest/tokio/io/struct.DuplexStream.html).
-pub struct DuplexPipe(pub Reader, pub Writer);
+pub struct DuplexPipe(Reader, Writer);
+
+impl DuplexPipe {
+    /// Splits the `DuplexPipe` into owned readable and writable halves.
+    pub fn into_split(self) -> (Reader, Writer) {
+        let DuplexPipe(read, write) = self;
+        (read, write)
+    }
+
+    /// Splits the `DuplexPipe` into mutable references to the readable and writable halves.
+    pub fn split(&mut self) -> (&mut Reader, &mut Writer) {
+        let DuplexPipe(read, write) = self;
+        (read, write)
+    }
+}
 
 impl AsyncRead for DuplexPipe {
     fn poll_read(
