@@ -7,8 +7,9 @@ use std::{cmp, io};
 use std::{collections::VecDeque, pin::Pin};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
-/// Unidirectional in-memory stream of bytes implementing `AsyncRead` and `AsyncWrite`.
-/// Non-thread-safe equivalent of [`tokio::io::SimplexStream`](https://docs.rs/tokio/latest/tokio/io/struct.SimplexStream.html).
+/// Unidirectional in-memory pipe implementing `AsyncRead` and `AsyncWrite`.
+/// A more efficient version of [`tokio::io::SimplexStream`](https://docs.rs/tokio/latest/tokio/io/struct.SimplexStream.html)
+/// optimized for single-threaded use cases.
 #[derive(Debug)]
 pub struct Pipe {
     buffer: VecDeque<u8>,
@@ -19,7 +20,7 @@ pub struct Pipe {
 }
 
 impl Pipe {
-    /// Creates a new `Pipe` with the specified maximum buffer size.
+    /// Create a new `Pipe` with a fixed-size pre-allocated buffer of `max_buf_size` bytes.
     pub fn new(max_buf_size: usize) -> Self {
         Self {
             buffer: VecDeque::with_capacity(max_buf_size),
@@ -28,6 +29,12 @@ impl Pipe {
             read_waker: None,
             write_waker: None,
         }
+    }
+
+    /// Split the pipe into non-[`Send`] owned readable and writable ends.
+    pub fn into_split(self) -> (ReadEnd, WriteEnd) {
+        let pipe = Rc::new(UnsafeCell::new(self));
+        (ReadEnd(pipe.clone()), WriteEnd(pipe))
     }
 
     fn close_write(&mut self) {
@@ -173,21 +180,13 @@ impl AsyncWrite for Pipe {
     }
 }
 
-/// Creates a unidirectional in-memory pipe with the specified maximum buffer size.
-/// Returns the readable and writable halves of the pipe.
-/// Non-thread-safe equivalent of [`tokio::io::simplex`](https://docs.rs/tokio/latest/tokio/io/fn.simplex.html).
-pub fn pipe(max_buf_size: usize) -> (Reader, Writer) {
-    let pipe = Rc::new(UnsafeCell::new(Pipe::new(max_buf_size)));
-    (Reader(pipe.clone()), Writer(pipe))
-}
+/// The readable end of a [`Pipe`]. Not thread-safe.
+pub struct ReadEnd(Rc<UnsafeCell<Pipe>>);
 
-/// The readable half of a value returned from [`pipe`].
-pub struct Reader(Rc<UnsafeCell<Pipe>>);
+/// The writable end of a [`Pipe`]. Not thread-safe.
+pub struct WriteEnd(Rc<UnsafeCell<Pipe>>);
 
-/// The writable half of a value returned from [`pipe`].
-pub struct Writer(Rc<UnsafeCell<Pipe>>);
-
-impl AsyncRead for Reader {
+impl AsyncRead for ReadEnd {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -198,14 +197,14 @@ impl AsyncRead for Reader {
     }
 }
 
-impl Drop for Reader {
+impl Drop for ReadEnd {
     fn drop(&mut self) {
         // SAFETY: exclusive access is guaranteed by the single-threaded context
         unsafe { self.0.with_unchecked(|pipe| pipe.close_read()) }
     }
 }
 
-impl AsyncWrite for Writer {
+impl AsyncWrite for WriteEnd {
     fn poll_write(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -242,66 +241,70 @@ impl AsyncWrite for Writer {
     }
 }
 
-impl Drop for Writer {
+impl Drop for WriteEnd {
     fn drop(&mut self) {
         // SAFETY: exclusive access is guaranteed by the single-threaded context
         unsafe { self.0.with_unchecked(|pipe| pipe.close_write()) }
     }
 }
 
-/// Create a pair of connected [`DuplexPipe`]s with the given capacity.
-pub fn duplex_pipe(max_buf_size: usize) -> (DuplexPipe, DuplexPipe) {
-    let (read1, write1) = pipe(max_buf_size);
-    let (read2, write2) = pipe(max_buf_size);
-    (DuplexPipe(read1, write2), DuplexPipe(read2, write1))
+/// Create a bi-directional in-memory stream of bytes using two [`Pipe`]s in opposite directions.
+/// Non-thread-safe equivalent of [`tokio::io::duplex`](https://docs.rs/tokio/latest/tokio/io/fn.duplex.html).
+/// # Returns
+/// A tuple containing two connected [`DuplexEnd`]s. Each end can be used for both reading and writing.
+/// Data written to one end can be read from the other end and vice versa.
+pub fn duplex_pipe(max_buf_size: usize) -> (DuplexEnd, DuplexEnd) {
+    let (read1, write1) = Pipe::new(max_buf_size).into_split();
+    let (read2, write2) = Pipe::new(max_buf_size).into_split();
+    (DuplexEnd(read1, write2), DuplexEnd(read2, write1))
 }
 
 /// Bidirectional in-memory stream of bytes implementing `AsyncRead` and `AsyncWrite`.
 /// Non-thread-safe equivalent of [`tokio::io::DuplexStream`](https://docs.rs/tokio/latest/tokio/io/struct.DuplexStream.html).
-pub struct DuplexPipe(Reader, Writer);
+pub struct DuplexEnd(ReadEnd, WriteEnd);
 
-impl DuplexPipe {
-    /// Splits the `DuplexPipe` into owned readable and writable halves.
-    pub fn into_split(self) -> (Reader, Writer) {
-        let DuplexPipe(read, write) = self;
+impl DuplexEnd {
+    /// Splits the [`DuplexEnd`] into owned readable and writable halves.
+    pub fn into_split(self) -> (ReadEnd, WriteEnd) {
+        let DuplexEnd(read, write) = self;
         (read, write)
     }
 
-    /// Splits the `DuplexPipe` into mutable references to the readable and writable halves.
-    pub fn split(&mut self) -> (&mut Reader, &mut Writer) {
-        let DuplexPipe(read, write) = self;
+    /// Splits the [`DuplexEnd`] into mutable references to the readable and writable halves.
+    pub fn split(&mut self) -> (&mut ReadEnd, &mut WriteEnd) {
+        let DuplexEnd(read, write) = self;
         (read, write)
     }
 }
 
-impl AsyncRead for DuplexPipe {
+impl AsyncRead for DuplexEnd {
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
-        let DuplexPipe(read, _write) = self.get_mut();
+        let DuplexEnd(read, _write) = self.get_mut();
         Pin::new(read).poll_read(cx, buf)
     }
 }
 
-impl AsyncWrite for DuplexPipe {
+impl AsyncWrite for DuplexEnd {
     fn poll_write(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<Result<usize, io::Error>> {
-        let DuplexPipe(_read, write) = self.get_mut();
+        let DuplexEnd(_read, write) = self.get_mut();
         Pin::new(write).poll_write(cx, buf)
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
-        let DuplexPipe(_read, write) = self.get_mut();
+        let DuplexEnd(_read, write) = self.get_mut();
         Pin::new(write).poll_flush(cx)
     }
 
     fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
-        let DuplexPipe(_read, write) = self.get_mut();
+        let DuplexEnd(_read, write) = self.get_mut();
         Pin::new(write).poll_shutdown(cx)
     }
 }
@@ -314,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_write_then_read() {
-        let (mut reader, mut writer) = pipe(1024);
+        let (mut reader, mut writer) = Pipe::new(1024).into_split();
 
         let data = b"Hello, world!";
         let mut write_task = spawn(writer.write_all(data));
@@ -332,7 +335,7 @@ mod tests {
 
     #[test]
     fn test_reader_notifies_writer() {
-        let (mut reader, mut writer) = pipe(7);
+        let (mut reader, mut writer) = Pipe::new(7).into_split();
 
         let data = b"Hello, world!";
         let mut write_task = spawn(writer.write_all(data));
@@ -359,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_writer_notifies_reader() {
-        let (mut reader, mut writer) = pipe(1024);
+        let (mut reader, mut writer) = Pipe::new(1024).into_split();
 
         let mut buf = Vec::new();
         let mut read_task = spawn(reader.read_buf(&mut buf));
@@ -380,7 +383,7 @@ mod tests {
 
     #[test]
     fn test_partial_read() {
-        let (mut reader, mut writer) = pipe(1024);
+        let (mut reader, mut writer) = Pipe::new(1024).into_split();
 
         let data = b"Hello, world!";
         let mut write_task = spawn(writer.write_all(data));
@@ -405,7 +408,7 @@ mod tests {
 
     #[test]
     fn test_drop_writer() {
-        let (mut reader, mut writer) = pipe(1024);
+        let (mut reader, mut writer) = Pipe::new(1024).into_split();
         assert_ready!(spawn(writer.write_all(b"Hello, world!")).poll()).unwrap();
 
         drop(writer);
@@ -419,7 +422,7 @@ mod tests {
 
     #[test]
     fn test_drop_writer_notify_reader() {
-        let (mut reader, writer) = pipe(1024);
+        let (mut reader, writer) = Pipe::new(1024).into_split();
 
         let mut buf = Vec::new();
         let mut read_task = spawn(reader.read_buf(&mut buf));
@@ -435,7 +438,7 @@ mod tests {
 
     #[test]
     fn test_drop_reader() {
-        let (reader, mut writer) = pipe(1024);
+        let (reader, mut writer) = Pipe::new(1024).into_split();
 
         drop(reader);
         let data = b"Hello, world!";
@@ -447,7 +450,7 @@ mod tests {
 
     #[test]
     fn test_drop_reader_notify_writer() {
-        let (reader, mut writer) = pipe(5);
+        let (reader, mut writer) = Pipe::new(5).into_split();
 
         let data = b"Hello, world!";
         let mut write_task = spawn(writer.write_all(data));
@@ -463,7 +466,7 @@ mod tests {
 
     #[test]
     fn test_non_contiguous_internal_buffer() {
-        let (mut reader, mut writer) = pipe(4);
+        let (mut reader, mut writer) = Pipe::new(4).into_split();
 
         assert_ready!(spawn(writer.write_all(b"1234")).poll()).unwrap();
 
