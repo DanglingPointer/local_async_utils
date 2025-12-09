@@ -67,7 +67,12 @@ impl<T> Sender<T> {
         &self.0.queue
     }
 
-    fn poll_ready(&mut self, cx: &mut Context) -> Poll<bool> {
+    /// Polls to see if the channel is ready to send a message.
+    /// # Returns
+    /// - `Poll::Ready(true)` if the message can be sent.
+    /// - `Poll::Ready(false)` if the receiver has been dropped.
+    /// - `Poll::Pending` if the channel is full.
+    pub fn poll_ready(&mut self, cx: &mut Context) -> Poll<bool> {
         if !self.0.has_rx.get() {
             Poll::Ready(false)
         } else if self.0.queue.len() < self.0.capacity {
@@ -78,7 +83,11 @@ impl<T> Sender<T> {
         }
     }
 
-    fn poll_closed(&mut self, cx: &mut Context) -> Poll<()> {
+    /// Polls to see if the receiver has been dropped.
+    /// # Returns
+    /// - `Poll::Ready(())` if the receiver has been dropped.
+    /// - `Poll::Pending` if the receiver is still alive.
+    pub fn poll_closed(&mut self, cx: &mut Context) -> Poll<()> {
         if !self.0.has_rx.get() {
             Poll::Ready(())
         } else {
