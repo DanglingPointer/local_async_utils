@@ -14,7 +14,7 @@ jobs:
     name: Check formatting
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@stable
       with:
         components: rustfmt
@@ -24,7 +24,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy
@@ -38,7 +38,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@stable
     - run: cargo build --release --all-targets --no-default-features
     - run: cargo build --release --all-targets --all-features
@@ -51,7 +51,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@stable
     - uses: taiki-e/install-action@v2
       with:
@@ -62,7 +62,7 @@ jobs:
     name: Run doc tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@nightly
     - run: cargo test --doc
     - run: cargo doc --lib --no-deps --all-features --document-private-items
