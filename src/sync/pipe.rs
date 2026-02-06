@@ -307,6 +307,19 @@ impl AsyncWrite for DuplexEnd {
         let DuplexEnd(_read, write) = self.get_mut();
         Pin::new(write).poll_shutdown(cx)
     }
+
+    fn poll_write_vectored(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        bufs: &[io::IoSlice<'_>],
+    ) -> Poll<io::Result<usize>> {
+        let DuplexEnd(_read, write) = self.get_mut();
+        Pin::new(write).poll_write_vectored(cx, bufs)
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]
