@@ -3,14 +3,13 @@ use std::cell::UnsafeCell;
 use std::io::BufRead;
 use std::rc::Rc;
 use std::task::{Context, Poll, Waker};
-use std::{cmp, io};
+use std::{cmp, fmt, io};
 use std::{collections::VecDeque, pin::Pin};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 /// Unidirectional in-memory pipe implementing `AsyncRead` and `AsyncWrite`.
 /// A more efficient version of [`tokio::io::SimplexStream`](https://docs.rs/tokio/latest/tokio/io/struct.SimplexStream.html)
 /// optimized for single-threaded use cases.
-#[derive(Debug)]
 pub struct Pipe {
     buffer: VecDeque<u8>,
     is_closed: bool,
@@ -180,6 +179,15 @@ impl AsyncWrite for Pipe {
     }
 }
 
+impl fmt::Debug for Pipe {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Pipe")
+            .field("buffer_len", &self.buffer.len())
+            .field("is_closed", &self.is_closed)
+            .finish()
+    }
+}
+
 /// The readable end of a [`Pipe`]. Not thread-safe.
 pub struct ReadEnd(Rc<UnsafeCell<Pipe>>);
 
@@ -201,6 +209,12 @@ impl Drop for ReadEnd {
     fn drop(&mut self) {
         // SAFETY: exclusive access is guaranteed by the single-threaded context
         unsafe { self.0.with_unchecked(|pipe| pipe.close_read()) }
+    }
+}
+
+impl fmt::Debug for ReadEnd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("ReadEnd").finish()
     }
 }
 
@@ -245,6 +259,12 @@ impl Drop for WriteEnd {
     fn drop(&mut self) {
         // SAFETY: exclusive access is guaranteed by the single-threaded context
         unsafe { self.0.with_unchecked(|pipe| pipe.close_write()) }
+    }
+}
+
+impl fmt::Debug for WriteEnd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("WriteEnd").finish()
     }
 }
 
@@ -319,6 +339,12 @@ impl AsyncWrite for DuplexEnd {
 
     fn is_write_vectored(&self) -> bool {
         true
+    }
+}
+
+impl fmt::Debug for DuplexEnd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("DuplexEnd").finish()
     }
 }
 

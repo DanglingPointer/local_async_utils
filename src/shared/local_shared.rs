@@ -1,5 +1,6 @@
 use super::{Shared, UnsafeShared};
 use std::cell::{RefCell, UnsafeCell};
+use std::fmt;
 use std::rc::Rc;
 
 /// Non-Send wrapper that allows access to the underlying data only through the `Shared` interface.
@@ -20,6 +21,12 @@ impl<T> Shared for LocalShared<T> {
         F: FnOnce(&mut T) -> R,
     {
         self.0.with(f)
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for LocalShared<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("LocalShared").field(&self.0.borrow()).finish()
     }
 }
 
@@ -47,6 +54,13 @@ impl<T> UnsafeShared for LocalUnsafeShared<T> {
         F: FnOnce(*mut Self::Target) -> R,
     {
         self.0.with(f)
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for LocalUnsafeShared<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value = unsafe { &*self.0.get() };
+        f.debug_tuple("LocalUnsafeShared").field(value).finish()
     }
 }
 

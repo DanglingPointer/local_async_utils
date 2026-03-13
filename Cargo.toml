@@ -15,12 +15,12 @@ tokio = ["dep:tokio"]
 [dependencies]
 futures = "0.3"
 log = "0.4"
-tokio = { version = "1.48", optional = true, features = ["time"] }
+tokio = { version = "1.50", optional = true, features = ["time"] }
 
 [dev-dependencies]
 static_assertions = "1.1"
 tokio-test = "0.4"
-tokio = { version = "1.48", features = ["time", "io-util"] }
+tokio = { version = "1.50", features = ["time", "io-util"] }
 
 [profile.dev]
 opt-level = 3

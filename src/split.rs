@@ -1,10 +1,10 @@
 //! Utilities for splitting `AsyncRead + AsyncWrite` types into separate read and write halves.
 
 use std::cell::RefCell;
-use std::io;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
+use std::{fmt, io};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 /// The readable half of a value returned from [`split`].
@@ -66,5 +66,17 @@ impl<T: AsyncWrite> AsyncWrite for WriteHalf<T> {
 
     fn is_write_vectored(&self) -> bool {
         self.0.borrow().is_write_vectored()
+    }
+}
+
+impl<T: fmt::Debug + AsyncRead> fmt::Debug for ReadHalf<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("ReadHalf").finish()
+    }
+}
+
+impl<T: fmt::Debug + AsyncWrite> fmt::Debug for WriteHalf<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("WriteHalf").finish()
     }
 }
