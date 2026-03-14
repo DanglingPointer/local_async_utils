@@ -3,6 +3,7 @@ use crate::sync::error::{SendError, TrySendError};
 use crate::sync::waker_cell::WakerCell;
 use futures::Stream;
 use std::cell::Cell;
+use std::fmt;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 use std::{future::poll_fn, pin::Pin};
@@ -105,6 +106,15 @@ impl<T> Drop for Sender<T> {
     }
 }
 
+impl<T> fmt::Debug for Sender<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Sender")
+            .field("channel_len", &self.0.queue.len())
+            .field("has_receiver", &self.0.has_rx.get())
+            .finish_non_exhaustive()
+    }
+}
+
 pub struct Receiver<T>(Rc<State<T>>);
 
 impl<T> Receiver<T> {
@@ -137,6 +147,15 @@ impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         self.0.has_rx.set(false);
         self.0.tx_waker.take_and_wake();
+    }
+}
+
+impl<T> fmt::Debug for Receiver<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Receiver")
+            .field("channel_len", &self.0.queue.len())
+            .field("has_sender", &self.0.has_tx.get())
+            .finish_non_exhaustive()
     }
 }
 

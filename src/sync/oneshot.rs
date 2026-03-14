@@ -1,6 +1,7 @@
 use super::shared_state::{SharedState, Source};
 use crate::sync::error::SendError;
 use std::cell::Cell;
+use std::fmt;
 use std::future::Future;
 use std::ops::ControlFlow;
 use std::pin::Pin;
@@ -59,6 +60,14 @@ impl<T> Drop for Sender<T> {
     }
 }
 
+impl<T> fmt::Debug for Sender<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Sender")
+            .field("has_receiver", &self.0.has_receiver.get())
+            .finish_non_exhaustive()
+    }
+}
+
 impl<T> Future for Receiver<T> {
     type Output = Option<T>;
 
@@ -71,5 +80,13 @@ impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         self.0.receiver_dropped();
         self.0.has_receiver.set(false);
+    }
+}
+
+impl<T> fmt::Debug for Receiver<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Receiver")
+            .field("has_sender", &self.0.has_sender.get())
+            .finish_non_exhaustive()
     }
 }

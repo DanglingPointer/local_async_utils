@@ -71,12 +71,12 @@ impl<T: AsyncWrite> AsyncWrite for WriteHalf<T> {
 
 impl<T: fmt::Debug + AsyncRead> fmt::Debug for ReadHalf<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("ReadHalf").finish()
+        f.debug_tuple("ReadHalf").field(&self.0.borrow()).finish()
     }
 }
 
 impl<T: fmt::Debug + AsyncWrite> fmt::Debug for WriteHalf<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("WriteHalf").finish()
+        f.debug_tuple("WriteHalf").field(&self.0.borrow()).finish()
     }
 }

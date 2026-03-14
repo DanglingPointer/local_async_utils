@@ -182,9 +182,9 @@ impl AsyncWrite for Pipe {
 impl fmt::Debug for Pipe {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Pipe")
-            .field("buffer_len", &self.buffer.len())
+            .field("pending_bytes", &self.buffer.len())
             .field("is_closed", &self.is_closed)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -214,7 +214,8 @@ impl Drop for ReadEnd {
 
 impl fmt::Debug for ReadEnd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("ReadEnd").finish()
+        let pipe = unsafe { &*self.0.get() };
+        f.debug_tuple("ReadEnd").field(pipe).finish()
     }
 }
 
@@ -264,7 +265,8 @@ impl Drop for WriteEnd {
 
 impl fmt::Debug for WriteEnd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("WriteEnd").finish()
+        let pipe = unsafe { &*self.0.get() };
+        f.debug_tuple("WriteEnd").field(pipe).finish()
     }
 }
 
@@ -344,7 +346,7 @@ impl AsyncWrite for DuplexEnd {
 
 impl fmt::Debug for DuplexEnd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("DuplexEnd").finish()
+        f.debug_tuple("DuplexEnd").field(&self.0).field(&self.1).finish()
     }
 }
 

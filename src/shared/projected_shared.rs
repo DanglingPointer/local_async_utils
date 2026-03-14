@@ -1,4 +1,5 @@
 use super::{Shared, UnsafeShared};
+use std::fmt;
 
 pub struct ProjectedShared<T, F> {
     pub(super) inner: T,
@@ -49,6 +50,12 @@ where
     {
         let proj_fn = &self.proj_fn;
         self.inner.with(|from| f(proj_fn(from)))
+    }
+}
+
+impl<T, F> fmt::Debug for ProjectedShared<T, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProjectedShared").finish_non_exhaustive()
     }
 }
 

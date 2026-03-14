@@ -63,6 +63,12 @@ impl Drop for Sender {
     }
 }
 
+impl fmt::Debug for Sender {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Sender").field("capacity", &self.0.capacity.get()).finish()
+    }
+}
+
 impl Receiver {
     pub fn acquire_one(&mut self) -> impl Future<Output = bool> + '_ {
         poll_fn(|cx| self.0.poll_wait(cx)).map(|v| v.is_some())
@@ -78,6 +84,15 @@ impl Drop for Receiver {
         self.0.receiver_dropped();
         #[cfg(debug_assertions)]
         self.0.has_receiver.set(false);
+    }
+}
+
+impl fmt::Debug for Receiver {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Receiver")
+            .field("capacity", &self.0.capacity.get())
+            .field("has_sender", &self.0.has_sender.get())
+            .finish()
     }
 }
 

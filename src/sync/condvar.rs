@@ -1,6 +1,7 @@
 use super::shared_state::{SharedState, Source};
 use futures::FutureExt;
 use std::cell::Cell;
+use std::fmt;
 use std::future::{Future, poll_fn};
 use std::ops::ControlFlow;
 use std::rc::Rc;
@@ -59,6 +60,12 @@ impl Drop for Sender {
     }
 }
 
+impl fmt::Debug for Sender {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Sender").field("notified", &self.0.notified.get()).finish()
+    }
+}
+
 impl Receiver {
     pub fn wait_for_one(&mut self) -> impl Future<Output = bool> + '_ {
         poll_fn(|cx| self.0.poll_wait(cx)).map(|v| v.is_some())
@@ -70,5 +77,14 @@ impl Drop for Receiver {
         self.0.receiver_dropped();
         #[cfg(debug_assertions)]
         self.0.has_receiver.set(false);
+    }
+}
+
+impl fmt::Debug for Receiver {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Receiver")
+            .field("notified", &self.0.notified.get())
+            .field("has_sender", &self.0.has_sender.get())
+            .finish()
     }
 }

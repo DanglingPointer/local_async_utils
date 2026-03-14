@@ -2,6 +2,7 @@ use super::shared_state::{SharedState, Source};
 use crate::sealed;
 use crate::sync::error::SendError;
 use std::cell::Cell;
+use std::fmt;
 use std::ops::ControlFlow;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -79,6 +80,15 @@ impl<T> Clone for Sender<T> {
     }
 }
 
+impl<T> fmt::Debug for Sender<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Sender")
+            .field("channel_len", &self.0.queue.len())
+            .field("has_receiver", &self.0.has_receiver.get())
+            .finish_non_exhaustive()
+    }
+}
+
 impl<T> Receiver<T> {
     pub fn is_closed(&self) -> bool {
         self.0.sender_count.get() == 0
@@ -101,6 +111,15 @@ impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         self.0.receiver_dropped();
         self.0.has_receiver.set(false);
+    }
+}
+
+impl<T> fmt::Debug for Receiver<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Receiver")
+            .field("channel_len", &self.0.queue.len())
+            .field("sender_count", &self.0.sender_count.get())
+            .finish_non_exhaustive()
     }
 }
 
