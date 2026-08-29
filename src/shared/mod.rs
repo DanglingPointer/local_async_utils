@@ -16,7 +16,7 @@ pub trait Shared: Clone {
     type Target;
 
     /// Perform operations on the shared data.
-    fn with<R, F>(&mut self, f: F) -> R
+    fn with<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&mut Self::Target) -> R;
 
@@ -36,7 +36,7 @@ impl<T> Shared for Rc<RefCell<T>> {
     type Target = T;
 
     #[inline(always)]
-    fn with<R, F>(&mut self, f: F) -> R
+    fn with<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&mut Self::Target) -> R,
     {
@@ -48,7 +48,7 @@ impl<T> Shared for Arc<Mutex<T>> {
     type Target = T;
 
     #[inline(always)]
-    fn with<R, F>(&mut self, f: F) -> R
+    fn with<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&mut Self::Target) -> R,
     {
@@ -61,14 +61,14 @@ impl<T> Shared for Arc<Mutex<T>> {
 pub trait UnsafeShared: Clone {
     type Target;
 
-    fn with<R, F>(&mut self, f: F) -> R
+    fn with<R, F>(&self, f: F) -> R
     where
         F: FnOnce(*mut Self::Target) -> R;
 
     /// # Safety
     /// Calls to `with_unchecked()` can't be nested inside each other.
     #[inline(always)]
-    unsafe fn with_unchecked<R, F>(&mut self, f: F) -> R
+    unsafe fn with_unchecked<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&mut Self::Target) -> R,
     {
@@ -91,7 +91,7 @@ impl<T> UnsafeShared for Rc<UnsafeCell<T>> {
     type Target = T;
 
     #[inline(always)]
-    fn with<R, F>(&mut self, f: F) -> R
+    fn with<R, F>(&self, f: F) -> R
     where
         F: FnOnce(*mut Self::Target) -> R,
     {

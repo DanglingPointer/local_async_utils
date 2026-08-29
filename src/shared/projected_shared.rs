@@ -14,7 +14,7 @@ where
     type Target = To;
 
     #[inline(always)]
-    fn with<R, F>(&mut self, f: F) -> R
+    fn with<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&mut Self::Target) -> R,
     {
@@ -44,7 +44,7 @@ where
     type Target = To;
 
     #[inline(always)]
-    fn with<R, F>(&mut self, f: F) -> R
+    fn with<R, F>(&self, f: F) -> R
     where
         F: FnOnce(*mut Self::Target) -> R,
     {
@@ -66,8 +66,8 @@ mod tests {
 
     #[test]
     fn test_projected_shared() {
-        let mut shared = LocalShared::new((1, 2));
-        let mut projected = shared.project(|data| &mut data.0);
+        let shared = LocalShared::new((1, 2));
+        let projected = shared.project(|data| &mut data.0);
 
         projected.with(|data| {
             *data += 10;

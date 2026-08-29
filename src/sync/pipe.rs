@@ -196,7 +196,7 @@ pub struct WriteEnd(Rc<UnsafeCell<Pipe>>);
 
 impl AsyncRead for ReadEnd {
     fn poll_read(
-        mut self: Pin<&mut Self>,
+        self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
@@ -221,7 +221,7 @@ impl fmt::Debug for ReadEnd {
 
 impl AsyncWrite for WriteEnd {
     fn poll_write(
-        mut self: Pin<&mut Self>,
+        self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<Result<usize, io::Error>> {
@@ -229,21 +229,18 @@ impl AsyncWrite for WriteEnd {
         unsafe { self.0.with_unchecked(|pipe| Pin::new(pipe).poll_write(cx, buf)) }
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
         // SAFETY: exclusive access is guaranteed by the single-threaded context
         unsafe { self.0.with_unchecked(|pipe| Pin::new(pipe).poll_flush(cx)) }
     }
 
-    fn poll_shutdown(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), io::Error>> {
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
         // SAFETY: exclusive access is guaranteed by the single-threaded context
         unsafe { self.0.with_unchecked(|pipe| Pin::new(pipe).poll_shutdown(cx)) }
     }
 
     fn poll_write_vectored(
-        mut self: Pin<&mut Self>,
+        self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         bufs: &[io::IoSlice<'_>],
     ) -> Poll<Result<usize, io::Error>> {

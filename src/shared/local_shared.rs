@@ -16,7 +16,7 @@ impl<T> Shared for LocalShared<T> {
     type Target = T;
 
     #[inline(always)]
-    fn with<R, F>(&mut self, f: F) -> R
+    fn with<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&mut T) -> R,
     {
@@ -49,7 +49,7 @@ impl<T> UnsafeShared for LocalUnsafeShared<T> {
     type Target = T;
 
     #[inline(always)]
-    fn with<R, F>(&mut self, f: F) -> R
+    fn with<R, F>(&self, f: F) -> R
     where
         F: FnOnce(*mut Self::Target) -> R,
     {
@@ -77,21 +77,21 @@ mod tests {
 
     #[test]
     fn test_local_shared() {
-        let mut shared = LocalShared::new(5);
+        let shared = LocalShared::new(5);
         define_with!(shared);
 
         with!(|data| {
             *data += 1;
         });
 
-        let mut shared_clone = shared.clone();
+        let shared_clone = shared.clone();
         let result = shared_clone.with(|data| *data);
         assert_eq!(result, 6);
     }
 
     #[test]
     fn test_local_unsafe_shared() {
-        let mut shared = LocalUnsafeShared::new(10);
+        let shared = LocalUnsafeShared::new(10);
         define_with_unchecked!(shared);
 
         unsafe {
@@ -100,7 +100,7 @@ mod tests {
             })
         };
 
-        let mut shared_clone = shared.clone();
+        let shared_clone = shared.clone();
         let result = unsafe { shared_clone.with(|data| *data) };
         assert_eq!(result, 11);
     }
